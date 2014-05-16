@@ -2,6 +2,7 @@
 using System.Linq;
 using RestSharp;
 using System.Net;
+using System.Runtime.Serialization;
 
 namespace DropNet.Exceptions
 {
@@ -60,10 +61,24 @@ namespace DropNet.Exceptions
 	    {
 		    get
 		    {
-			    return string.Format("Received Response [{0}] : Expected to see [{1}]. The HTTP response was [{2}].",
-                    Response.StatusCode,
-                    string.Join(", ", ExpectedCodes.Select(code => Enum.GetName(typeof(HttpStatusCode), code))),
-                    Response.Content);
+                string msg = String.Format("[{0}]", Response.StatusCode);
+                RestSharp.JsonObject parsedJson = null;
+                try
+                {
+                    parsedJson = SimpleJson.DeserializeObject(Response.Content) as RestSharp.JsonObject;
+                }
+                catch (SerializationException) { }
+
+                if (parsedJson != null && parsedJson.ContainsKey("error") && parsedJson["error"] != null)
+                    msg += ": " + parsedJson["error"].ToString();
+                else
+                {
+                    if (Response.ErrorException != null)
+                        msg += Response.ErrorMessage;
+                    else
+                        msg += Response.Content;
+                }
+                return msg;
 		    }
 	    }        
     }
