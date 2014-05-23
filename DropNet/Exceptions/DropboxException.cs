@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using RestSharp;
+using System.Collections.Generic;
 using System.Net;
 using System.Runtime.Serialization;
 
@@ -62,15 +63,16 @@ namespace DropNet.Exceptions
 		    get
 		    {
                 string msg = String.Format("[{0}]", Response.StatusCode);
-                RestSharp.JsonObject parsedJson = null;
+				Dictionary<string, string> parsedJson = null;
                 try
                 {
-                    parsedJson = SimpleJson.DeserializeObject(Response.Content) as RestSharp.JsonObject;
+			RestSharp.Deserializers.JsonDeserializer r = new RestSharp.Deserializers.JsonDeserializer();
+			parsedJson = r.Deserialize<Dictionary<string, string>>(Response);
                 }
                 catch (SerializationException) { }
 
                 if (parsedJson != null && parsedJson.ContainsKey("error") && parsedJson["error"] != null)
-                    msg += ": " + parsedJson["error"].ToString();
+                    msg += ": " + parsedJson["error"];
                 else
                 {
                     if (Response.ErrorException != null)
