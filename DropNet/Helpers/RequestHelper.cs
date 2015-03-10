@@ -386,6 +386,13 @@ namespace DropNet.Helpers
             return request;
         }
 
+        public RestRequest CreateDisableAccessTokenRequest()
+        {
+            var request = new RestRequest("{version}/disable_access_token", Method.POST);
+            request.AddParameter("version", _version, ParameterType.UrlSegment);
+            return request;
+        }
+
         public RestRequest CreateAccountInfoRequest()
         {
             var request = new RestRequest(Method.GET);
@@ -407,13 +414,41 @@ namespace DropNet.Helpers
             return request;
         }
 
-        internal RestRequest CreateDeltaRequest(string cursor)
+        internal RestRequest CreateLongpollDeltaRequest(string cursor, int timeout)
+        {
+            var request = new RestRequest(Method.GET);
+            request.Resource = "{version}/longpoll_delta";
+            
+            request.AddParameter("version", _version, ParameterType.UrlSegment);
+            request.AddParameter("cursor", cursor);
+
+            if (timeout < 30)
+                timeout = 30;
+            if (timeout > 480)
+                timeout = 480;
+            request.AddParameter("timeout", timeout);
+
+            return request;
+        }
+
+        internal RestRequest CreateDeltaRequest(string cursor, string pathPrefix, string locale, bool includeMediaInfo)
         {
             var request = new RestRequest(Method.POST);
             request.Resource = "{version}/delta";
 
             request.AddParameter("version", _version, ParameterType.UrlSegment);
             request.AddParameter("cursor", cursor);
+            request.AddParameter("include_media_info", includeMediaInfo);
+
+            if (!string.IsNullOrEmpty(pathPrefix))
+            {
+                request.AddParameter("path_prefix", pathPrefix);
+            }
+
+            if (!string.IsNullOrEmpty(locale))
+            {
+                request.AddParameter("locale", locale);
+            }
 
             return request;
         }
@@ -449,7 +484,22 @@ namespace DropNet.Helpers
             return "s";
         }
 
-        public RestRequest CreateSearchRequest(string searchString, string path, string root)
+        public RestRequest CreateRestoreRequest(string rev, string path, string root)
+        {
+            var request = new RestRequest(Method.POST)
+            {
+                Resource = "{version}/restore/{root}{path}"
+            };
+
+            request.AddParameter("version", _version, ParameterType.UrlSegment);
+            request.AddParameter("path", path, ParameterType.UrlSegment);
+            request.AddParameter("root", root, ParameterType.UrlSegment);
+            request.AddParameter("rev", rev);
+
+            return request;
+        }
+
+        public RestRequest CreateSearchRequest(string searchString, string path, string root, int fileLimit)
         {
             var request = new RestRequest(Method.GET)
                               {
@@ -460,6 +510,7 @@ namespace DropNet.Helpers
             request.AddParameter("path", path, ParameterType.UrlSegment);
             request.AddParameter("root", root, ParameterType.UrlSegment);
             request.AddParameter("query", searchString);
+            request.AddParameter("file_limit", fileLimit);
 
             return request;
         }

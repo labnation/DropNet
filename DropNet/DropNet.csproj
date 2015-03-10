@@ -73,6 +73,7 @@
     </Compile>
     <Compile Include="Client\Client.cs" />
     <Compile Include="Client\Files.Task.cs" />
+    <Compile Include="Client\IDropNetClient.cs" />
     <Compile Include="Client\User.Async.cs" />
     <Compile Include="Client\Files.Async.cs" />
     <Compile Include="Client\Files.Sync.cs" />
@@ -113,6 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="dropnet.nuspec" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />

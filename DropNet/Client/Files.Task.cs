@@ -34,14 +34,34 @@ namespace DropNet
             return ExecuteTask<MetaData>(ApiType.Base, request);
         }
 
+        public Task<MetaData> RestoreTask(string rev, string path)
+        {
+            var request = _requestHelper.CreateRestoreRequest(rev, path, Root);
+
+            return ExecuteTask<MetaData>(ApiType.Base, request);
+        }
+
         public Task<List<MetaData>> SearchTask(string searchString)
         {
             return SearchTask(searchString, string.Empty);
         }
 
+        public Task<List<MetaData>> SearchTask(string searchString, int fileLimit)
+        {
+            return SearchTask(searchString, string.Empty, fileLimit);
+        }
+
         public Task<List<MetaData>> SearchTask(string searchString, string path)
         {
-            var request = _requestHelper.CreateSearchRequest(searchString, path, Root);
+            return SearchTask(searchString, path);
+        }
+
+        public Task<List<MetaData>> SearchTask(string searchString, string path, int fileLimit = 1000)
+        {
+            if (fileLimit > 1000)
+                fileLimit = 1000;
+
+            var request = _requestHelper.CreateSearchRequest(searchString, path, Root, fileLimit);
 
             return ExecuteTask<List<MetaData>>(ApiType.Base, request);
         }
