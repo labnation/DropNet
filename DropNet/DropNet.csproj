@@ -54,8 +54,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="RestSharp">
-      <HintPath>..\..\packages\RestSharp.104.4.0\lib\net4-client\RestSharp.dll</HintPath>
+    <Reference Include="RestSharp, Version=105.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\RestSharp.105.0.1\lib\net4\RestSharp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -73,6 +74,7 @@
     </Compile>
     <Compile Include="Client\Client.cs" />
     <Compile Include="Client\Files.Task.cs" />
+    <Compile Include="Client\IDropNetClient.cs" />
     <Compile Include="Client\User.Async.cs" />
     <Compile Include="Client\Files.Async.cs" />
     <Compile Include="Client\Files.Sync.cs" />
@@ -113,6 +115,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="dropnet.nuspec" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />

@@ -11,25 +11,23 @@ namespace DropNet
 {
     public partial class DropNetClient
     {
-        public Task<MetaData> GetMetaDataTask(string path)
+        public Task<MetaData> GetMetaDataTask(String hash, Boolean list = false, Boolean include_deleted = false)
         {
-            if (!string.IsNullOrEmpty(path) && !path.StartsWith("/"))
-            {
-                path = "/" + path;
-            }
+            return GetMetaDataTask(String.Empty, hash, list, include_deleted);
+        }
 
-            var request = _requestHelper.CreateMetadataRequest(path, Root);
+        public Task<MetaData> GetMetaDataTask(String path, String hash = null, Boolean list = false, Boolean include_deleted = false)
+        {
+            if (path != "" && !path.StartsWith("/")) path = "/" + path;
+
+            var request = _requestHelper.CreateMetadataRequest(path, Root, hash, list, include_deleted);
 
             return ExecuteTask<MetaData>(ApiType.Base, request);
         }
 
-        public Task<MetaData> GetMetaDataTask(string path, string hash)
+        public Task<MetaData> RestoreTask(string rev, string path)
         {
-            if (path != "" && !path.StartsWith("/")) path = "/" + path;
-
-            var request = _requestHelper.CreateMetadataRequest(path, Root);
-
-            request.AddParameter("hash", hash);
+            var request = _requestHelper.CreateRestoreRequest(rev, path, Root);
 
             return ExecuteTask<MetaData>(ApiType.Base, request);
         }
@@ -39,9 +37,17 @@ namespace DropNet
             return SearchTask(searchString, string.Empty);
         }
 
-        public Task<List<MetaData>> SearchTask(string searchString, string path)
+        public Task<List<MetaData>> SearchTask(string searchString, int fileLimit)
         {
-            var request = _requestHelper.CreateSearchRequest(searchString, path, Root);
+            return SearchTask(searchString, string.Empty, fileLimit);
+        }
+
+        public Task<List<MetaData>> SearchTask(string searchString, string path, int fileLimit = 1000)
+        {
+            if (fileLimit > 1000)
+                fileLimit = 1000;
+
+            var request = _requestHelper.CreateSearchRequest(searchString, path, Root, fileLimit);
 
             return ExecuteTask<List<MetaData>>(ApiType.Base, request);
         }

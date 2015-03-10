@@ -12,17 +12,16 @@ using OAuth2Authenticator = DropNet.Authenticators.OAuth2Authenticator;
 
 namespace DropNet
 {
-    public partial class DropNetClient
+    public partial class DropNetClient : IDropNetClient
     {
+        private const string MainServerBaseUrl = "https://www.dropbox.com";
         private const string ApiBaseUrl = "https://api.dropbox.com";
         private const string ApiContentBaseUrl = "https://api-content.dropbox.com";
+        private const string ApiNotifyUrl = "https://api-notify.dropbox.com";
         private const string Version = "1";
 
         private UserLogin _userLogin;
 
-        /// <summary>
-        /// Contains the Users Token and Secret
-        /// </summary>
         public UserLogin UserLogin
         {
             get { return _userLogin; }
@@ -57,11 +56,13 @@ namespace DropNet
         private readonly string _appsecret;
         private readonly AuthenticationMethod _authenticationMethod;
 
+        private RestClient _restClientMainServer;
         private RestClient _restClient;
         private RestClient _restClientContent;
+        private RestClient _restClientNotify;
         private RequestHelper _requestHelper;
 
-#if !WINDOWS_PHONE && !WINRT
+#if !WINDOWS_PHONE
         public IWebProxy Proxy { get; set; }
 #endif
 
@@ -73,15 +74,45 @@ namespace DropNet
             get { return UseSandbox ? SandboxRoot : DropboxRoot; }
         }
 
+#if WINDOWS_PHONE
         /// <summary>
         /// Default Constructor for the DropboxClient
         /// </summary>
         /// <param name="apiKey">The Api Key to use for the Dropbox Requests</param>
         /// <param name="appSecret">The Api Secret to use for the Dropbox Requests</param>
-        /// <param name="authenticationMethod">The authentication method to use.</param>
         /// <param name="proxy">The proxy to use for web requests</param>
+        /// <param name="authenticationMethod">The authentication method to use.</param>
         public DropNetClient(string apiKey, string appSecret, AuthenticationMethod authenticationMethod = AuthenticationMethod.OAuth1)
         {
+            LoadClient();
+            _apiKey = apiKey;
+            _appsecret = appSecret;
+            _authenticationMethod = authenticationMethod;
+            UserLogin = null;
+        }
+
+        public DropNetClient(string apiKey, string appSecret, string accessToken)
+            : this(apiKey, appSecret, AuthenticationMethod.OAuth2)
+        {
+            UserLogin = new UserLogin { Token = accessToken };
+        }
+
+        public DropNetClient(string apiKey, string appSecret, string userToken, string userSecret)
+            : this(apiKey, appSecret)
+        {
+            UserLogin = new UserLogin { Token = userToken, Secret = userSecret };
+        }
+#else
+        /// <summary>
+        /// Default Constructor for the DropboxClient
+        /// </summary>
+        /// <param name="apiKey">The Api Key to use for the Dropbox Requests</param>
+        /// <param name="appSecret">The Api Secret to use for the Dropbox Requests</param>
+        /// <param name="proxy">The proxy to use for web requests</param>
+        /// <param name="authenticationMethod">The authentication method to use.</param>
+        public DropNetClient(string apiKey, string appSecret, IWebProxy proxy = null, AuthenticationMethod authenticationMethod = AuthenticationMethod.OAuth1)
+        {
+            Proxy = proxy;
             LoadClient();
             _apiKey = apiKey;
             _appsecret = appSecret;
@@ -96,8 +127,8 @@ namespace DropNet
         /// <param name="appSecret">The Api Secret to use for the Dropbox Requests</param>
         /// <param name="accessToken">The OAuth2 access token</param>
         /// <param name="proxy">The proxy to use for web requests</param>
-        public DropNetClient(string apiKey, string appSecret, string accessToken)
-            : this(apiKey, appSecret, AuthenticationMethod.OAuth2)
+        public DropNetClient(string apiKey, string appSecret, string accessToken, IWebProxy proxy = null)
+            : this(apiKey, appSecret, proxy, AuthenticationMethod.OAuth2)
         {
             UserLogin = new UserLogin { Token = accessToken };
         }
@@ -110,17 +141,24 @@ namespace DropNet
         /// <param name="userToken">The OAuth1 User authentication token</param>
         /// <param name="userSecret">The OAuth1 Users matching secret</param>
         /// <param name="proxy">The proxy to use for web requests</param>
-        public DropNetClient(string apiKey, string appSecret, string userToken, string userSecret)
-            :this(apiKey, appSecret)
+        public DropNetClient(string apiKey, string appSecret, string userToken, string userSecret, IWebProxy proxy = null)
+            : this(apiKey, appSecret, proxy)
         {
-            UserLogin = new UserLogin { Token = userToken, Secret = userSecret };
+            UserLogin = new UserLogin {Token = userToken, Secret = userSecret};
         }
+#endif
 
         private void LoadClient()
         {
+            _restClientMainServer = new RestClient(MainServerBaseUrl);
+
+#if !WINDOWS_PHONE
+            _restClientMainServer.Proxy = Proxy;
+#endif
+
             _restClient = new RestClient(ApiBaseUrl);
 
-#if !WINDOWS_PHONE && !WINRT
+#if !WINDOWS_PHONE
             _restClient.Proxy = Proxy;
 #endif
 
@@ -128,8 +166,22 @@ namespace DropNet
             _restClient.AddHandler("*", new JsonDeserializer());
 
             _restClientContent = new RestClient(ApiContentBaseUrl);
+
+#if !WINDOWS_PHONE
+            _restClientContent.Proxy = Proxy;
+#endif
+
             _restClientContent.ClearHandlers();
             _restClientContent.AddHandler("*", new JsonDeserializer());
+
+            _restClientNotify = new RestClient(ApiNotifyUrl);
+
+#if !WINDOWS_PHONE
+            _restClientNotify.Proxy = Proxy;
+#endif
+
+            _restClientNotify.ClearHandlers();
+            _restClientNotify.AddHandler("*", new JsonDeserializer());
 
             _requestHelper = new RequestHelper(Version);
 
@@ -137,22 +189,11 @@ namespace DropNet
             UseSandbox = false;
         }
 
-        /// <summary>
-        /// Helper Method to Build up the Url to authorize a Token/Secret
-        /// </summary>
-        /// <param name="callback"></param>
-        /// <returns></returns>
         public string BuildAuthorizeUrl(string callback = null)
         {
             return BuildAuthorizeUrl(UserLogin, callback);
         }
 
-        /// <summary>
-        /// Helper Method to Build up the Url to authorize a Token/Secret
-        /// </summary>
-        /// <param name="userLogin"></param>
-        /// <param name="callback"></param>
-        /// <returns></returns>
         public string BuildAuthorizeUrl(UserLogin userLogin, string callback = null)
         {
             if (userLogin == null)
@@ -163,13 +204,6 @@ namespace DropNet
             return _restClient.BuildUri(request).ToString();
         }
 
-        /// <summary>
-        /// This starts the OAuth 2.0 authorization flow. This isn't an API call—it's the web page that lets the user sign in to Dropbox and authorize your app. The user must be redirected to the page over HTTPS and it should be presented to the user through their web browser. After the user decides whether or not to authorize your app, they will be redirected to the URL specified by the 'redirectUri'.
-        /// </summary>
-        /// <param name="oAuth2AuthorizationFlow">The type of authorization flow to use.  See the OAuth2AuthorizationFlow enum documentation for more information.</param>
-        /// <param name="redirectUri">Where to redirect the user after authorization has completed. This must be the exact URI registered in the app console (https://www.dropbox.com/developers/apps), though localhost and 127.0.0.1 are always accepted. A redirect URI is required for a token flow, but optional for code. If the redirect URI is omitted, the code will be presented directly to the user and they will be invited to enter the information in your app.</param>
-        /// <param name="state">Arbitrary data that will be passed back to your redirect URI. This parameter can be used to track a user through the authorization flow in order to prevent cross-site request forgery (CRSF) attacks.</param>
-        /// <returns>A URL to which your app should redirect the user for authorization.  After the user authorizes your app, they will be sent to your redirect URI. The type of response varies based on the 'oauth2AuthorizationFlow' argument.  .</returns>
         public string BuildAuthorizeUrl(OAuth2AuthorizationFlow oAuth2AuthorizationFlow, string redirectUri, string state = null)
         {
             if (string.IsNullOrWhiteSpace(redirectUri))
@@ -177,10 +211,10 @@ namespace DropNet
                 throw new ArgumentNullException("redirectUri");
             }
             RestRequest request = _requestHelper.BuildOAuth2AuthorizeUrl(oAuth2AuthorizationFlow, _apiKey, redirectUri, state);
-            return _restClient.BuildUri(request).ToString();
+            return _restClientMainServer.BuildUri(request).ToString();
         }
 
-#if !WINDOWS_PHONE && !WINRT
+#if !WINDOWS_PHONE
         private T Execute<T>(ApiType apiType, IRestRequest request) where T : new()
         {
             IRestResponse<T> response;
@@ -193,13 +227,22 @@ namespace DropNet
                     throw new DropboxRestException(response, HttpStatusCode.OK);
                 }
             }
-            else
+            else if (apiType == ApiType.Content)
             {
                 response = _restClientContent.Execute<T>(request);
 
                 if (response.StatusCode != HttpStatusCode.OK && response.StatusCode != HttpStatusCode.PartialContent)
                 {
                     throw new DropboxRestException(response, HttpStatusCode.OK, HttpStatusCode.PartialContent);
+                }
+            }
+            else
+            {
+                response = _restClientNotify.Execute<T>(request);
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new DropboxRestException(response);
                 }
             }
 
@@ -218,13 +261,22 @@ namespace DropNet
                     throw new DropboxRestException(response, HttpStatusCode.OK);
                 }
             }
-            else
+            else if (apiType == ApiType.Content)
             {
                 response = _restClientContent.Execute(request);
 
                 if (response.StatusCode != HttpStatusCode.OK && response.StatusCode != HttpStatusCode.PartialContent)
                 {
                     throw new DropboxRestException(response, HttpStatusCode.OK, HttpStatusCode.PartialContent);
+                }
+            }
+            else
+            {
+                response = _restClientNotify.Execute(request);
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new DropboxRestException(response);
                 }
             }
 
@@ -239,7 +291,7 @@ namespace DropNet
             if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
             {
                 //do nothing
-                failure(new DropboxException
+                failure(new DropboxRestException
                 {
                     StatusCode = System.Net.HttpStatusCode.BadGateway
                 });
@@ -260,13 +312,27 @@ namespace DropNet
                     }
                 });
             }
-            else
+            else if (apiType == ApiType.Content)
             {
                 _restClientContent.ExecuteAsync(request, (response, asynchandle) =>
                 {
                     if (response.StatusCode != HttpStatusCode.OK && response.StatusCode != HttpStatusCode.PartialContent)
                     {
                         failure(new DropboxRestException(response, HttpStatusCode.OK, HttpStatusCode.PartialContent));
+                    }
+                    else
+                    {
+                        success(response);
+                    }
+                });
+            }
+            else
+            {
+                _restClientNotify.ExecuteAsync(request, (response, asynchandle) =>
+                {
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        failure(new DropboxRestException(response));
                     }
                     else
                     {
@@ -283,7 +349,7 @@ namespace DropNet
             if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
             {
                 //do nothing
-                failure(new DropboxException
+                failure(new DropboxRestException
                 {
                     StatusCode = System.Net.HttpStatusCode.BadGateway
                 });
@@ -304,7 +370,7 @@ namespace DropNet
                     }
                 });
             }
-            else
+            else if (apiType == ApiType.Content)
             {
                 _restClientContent.ExecuteAsync<T>(request, (response, asynchandle) =>
                 {
@@ -318,9 +384,21 @@ namespace DropNet
                     }
                 });
             }
+            else
+            {
+                _restClientNotify.ExecuteAsync<T>(request, (response, asynchandle) =>
+                {
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        failure(new DropboxRestException(response));
+                    }
+                    else
+                    {
+                        success(response.Data);
+                    }
+                });
+            }
         }
-
-#if !WINRT
 
         private Task<T> ExecuteTask<T>(ApiType apiType, IRestRequest request) where T : new()
         {
@@ -346,8 +424,6 @@ namespace DropNet
             }
         }
 
-#endif
-
         private UserLogin GetUserLoginFromParams(string urlParams)
         {
             var userLogin = new UserLogin();
@@ -372,8 +448,8 @@ namespace DropNet
 
         private void SetAuthProviders()
         {
-            _restClientContent.Authenticator = GetAuthenticator(_restClientContent.BaseUrl);
-            _restClient.Authenticator = GetAuthenticator(_restClient.BaseUrl);
+            _restClientContent.Authenticator = GetAuthenticator(_restClientContent.BaseUrl.ToString());
+            _restClient.Authenticator = GetAuthenticator(_restClient.BaseUrl.ToString());
         }
 
         private IAuthenticator GetAuthenticator(string baseUrl)
@@ -388,7 +464,8 @@ namespace DropNet
         enum ApiType
         {
             Base,
-            Content
+            Content,
+            Notify
         }
 
         /// <summary>
