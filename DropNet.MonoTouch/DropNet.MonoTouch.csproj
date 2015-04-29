@@ -6,7 +6,7 @@
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{E9580EFC-6014-4D3B-82A8-5F6D57213CE4}</ProjectGuid>
-    <ProjectTypeGuids>{6BC8ED88-2882-458C-8E55-DFD12B67127B};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <ProjectTypeGuids>{FEACFBD2-3405-455C-9665-78FE426C6842};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>DropNet</RootNamespace>
@@ -72,6 +72,7 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="Xamarin.iOS" />
   </ItemGroup>
   <ItemGroup />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -95,6 +96,9 @@
     </Compile>
     <Compile Include="..\DropNet\Client\Files.Async.cs">
       <Link>Client\Files.Async.cs</Link>
+    </Compile>
+    <Compile Include="..\DropNet\Client\IDropNetClient.cs">
+      <Link>Client\IDropNetClient.cs</Link>
     </Compile>
     <Compile Include="..\DropNet\Client\Files.Sync.cs">
       <Link>Client\Files.Sync.cs</Link>
