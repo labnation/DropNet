@@ -164,7 +164,7 @@
       <Link>Authenticators\OAuth2Authenticator.cs</Link>
     </Compile>
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.MonoTouch.CSharp.targets" />
+  <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.CSharp.targets" />
   <ItemGroup>
     <ProjectReference Include="..\RestSharp\RestSharp.MonoTouch\RestSharp.MonoTouch.csproj">
       <Project>{E9A9D1C5-4E06-4D31-9809-A97188C70B2C}</Project>
