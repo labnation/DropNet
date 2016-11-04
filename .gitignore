@@ -37,3 +37,4 @@ download/
 *.userprefs
 /DropNet.Tests/TestVariables.cs
 /packages
+*~
